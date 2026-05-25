@@ -1,0 +1,309 @@
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto;
+  gap: 16px;
+  animation: fadeUp 0.3s ease both;
+}
+
+/* ── Stats row ── */
+.stats {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.statCard {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  transition: border-color var(--t), transform var(--t);
+}
+
+.statCard:hover {
+  border-color: var(--border-light);
+  transform: translateY(-1px);
+}
+
+.statHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.statLabel {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.statIcon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.statValue {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+}
+
+.statSub {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.subGreen { color: var(--green); }
+.subRed   { color: var(--red); }
+
+/* ── Cards ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.areaCard {
+  grid-column: 1 / -1;
+}
+
+.pieCard  { grid-column: 2; }
+.goalsCard { grid-column: 1; }
+.recentCard { grid-column: 1 / -1; }
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.cardTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.cardSub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.cardLink {
+  font-size: 12px;
+  color: var(--accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  transition: color var(--t);
+}
+
+.cardLink:hover { color: var(--accent-hover); }
+
+/* ── Chart legend ── */
+.chartLegend {
+  display: flex;
+  gap: 20px;
+  justify-content: center;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+/* ── Tooltip ── */
+.tooltip {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: var(--radius-md);
+  padding: 10px 14px;
+  font-size: 13px;
+  box-shadow: var(--shadow-md);
+}
+
+.tooltipLabel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.tooltipRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  color: var(--text-primary);
+}
+
+/* ── Pie ── */
+.emptyPie {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 13px;
+  padding: 40px 0;
+}
+
+.pieList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pieRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.pieDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.pieName {
+  flex: 1;
+  color: var(--text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pieVal {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* ── Goals ── */
+.goalList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.goalItem { display: flex; flex-direction: column; gap: 6px; }
+
+.goalRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.goalCat { color: var(--text-primary); font-weight: 500; }
+.goalPct { font-size: 12px; }
+.pctGreen { color: var(--green); }
+.pctAmber { color: var(--amber); }
+.pctRed   { color: var(--red); }
+
+.bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+
+.barGreen { background: var(--green); }
+.barAmber { background: var(--amber); }
+.barRed   { background: var(--red); }
+
+/* ── Recent tx ── */
+.txList { display: flex; flex-direction: column; gap: 2px; }
+
+.txItem {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  transition: background var(--t);
+}
+
+.txItem:hover { background: var(--bg-card-hover); }
+
+.txDot {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.txMeta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.txDesc {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.txCat {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.txAmount { font-size: 14px; font-weight: 600; }
+.amtGreen { color: var(--green); }
+.amtRed   { color: var(--red); }
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .stats { grid-template-columns: repeat(2, 1fr); }
+  .areaCard { grid-column: 1 / -1; }
+  .pieCard, .goalsCard { grid-column: 1 / -1; }
+}
+
+@media (max-width: 540px) {
+  .stats { grid-template-columns: 1fr 1fr; }
+  .statValue { font-size: 20px; }
+}
