@@ -1,9 +1,12 @@
 import { useMemo } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  PieChart, Pie, Cell, ResponsiveContainer, Legend,
+  PieChart, Pie, Cell, ResponsiveContainer,
 } from 'recharts';
-import { TrendingUp, TrendingDown, Wallet, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import {
+  TrendingUp, TrendingDown, Wallet,
+  ArrowUpRight, ArrowDownRight, Target, Plus,
+} from 'lucide-react';
 import styles from './Dashboard.module.css';
 
 const fmt = (n) =>
@@ -18,7 +21,7 @@ function StatCard({ title, value, sub, icon: Icon, color, trend }) {
       <div className={styles.statHeader}>
         <span className={styles.statLabel}>{title}</span>
         <div className={styles.statIcon} style={{ background: `${color}20`, color }}>
-          <Icon size={16} />
+          <Icon size={15} />
         </div>
       </div>
       <div className={styles.statValue}>{fmt(value)}</div>
@@ -60,29 +63,28 @@ const PieTooltip = ({ active, payload }) => {
   );
 };
 
-export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavigate }) {
+export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavigate, onOpenAddModal }) {
   const now = new Date();
   const yr = now.getFullYear();
   const mo = now.getMonth();
 
-  // Current month totals
-  const { income, expenses, balance } = useMemo(() => {
+  const { income, expenses, balance, incomeCount, expenseCount } = useMemo(() => {
     const thisMonth = transactions.filter((t) => {
       const d = new Date(t.date);
       return d.getFullYear() === yr && d.getMonth() === mo;
     });
-    const income = thisMonth.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0);
-    const expenses = thisMonth.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-    return { income, expenses, balance: income - expenses };
+    const inc = thisMonth.filter((t) => t.type === 'income');
+    const exp = thisMonth.filter((t) => t.type === 'expense');
+    const income = inc.reduce((s, t) => s + t.amount, 0);
+    const expenses = exp.reduce((s, t) => s + t.amount, 0);
+    return { income, expenses, balance: income - expenses, incomeCount: inc.length, expenseCount: exp.length };
   }, [transactions, yr, mo]);
 
-  // All-time balance
   const totalBalance = useMemo(
     () => transactions.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0),
     [transactions]
   );
 
-  // Last 6 months chart data
   const areaData = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
       const d = new Date(yr, mo - 5 + i, 1);
@@ -95,13 +97,12 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
       });
       return {
         month,
-        Income: txs.filter((t) => t.type === 'income').reduce((s, t) => s + t.amount, 0),
+        Income:   txs.filter((t) => t.type === 'income').reduce((s, t)  => s + t.amount, 0),
         Expenses: txs.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
       };
     });
   }, [transactions, yr, mo]);
 
-  // Expense breakdown pie
   const pieData = useMemo(() => {
     const map = {};
     transactions
@@ -109,22 +110,20 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
         const d = new Date(t.date);
         return t.type === 'expense' && d.getFullYear() === yr && d.getMonth() === mo;
       })
-      .forEach((t) => {
-        map[t.category] = (map[t.category] ?? 0) + t.amount;
-      });
+      .forEach((t) => { map[t.category] = (map[t.category] ?? 0) + t.amount; });
     return Object.entries(map)
       .map(([name, value]) => ({ name, value, fill: CATEGORY_COLORS[name] ?? '#6b7280' }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
   }, [transactions, yr, mo, CATEGORY_COLORS]);
 
-  // Recent transactions
+  const pieTotal = useMemo(() => pieData.reduce((s, d) => s + d.value, 0), [pieData]);
+
   const recent = useMemo(
     () => [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8),
     [transactions]
   );
 
-  // Top goal alerts
   const goalAlerts = useMemo(() => {
     return goals.map((g) => {
       const spent = transactions
@@ -139,16 +138,57 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
   }, [goals, transactions, yr, mo]);
 
   const monthName = now.toLocaleString('default', { month: 'long' });
+  const isEmpty = transactions.length === 0;
 
   return (
     <div className={styles.grid}>
-      {/* Stats row */}
+      {/* Stats row — always visible */}
       <div className={styles.stats}>
-        <StatCard title="Total Balance"   value={totalBalance} icon={Wallet}       color="#6366f1" sub="All time" />
-        <StatCard title={`${monthName} Income`}   value={income}   icon={TrendingUp}   color="#22c55e" sub={`${transactions.filter(t => { const d=new Date(t.date); return d.getFullYear()===yr&&d.getMonth()===mo&&t.type==='income'; }).length} transactions`} trend="up" />
-        <StatCard title={`${monthName} Expenses`} value={expenses} icon={TrendingDown} color="#ef4444" sub={`${transactions.filter(t => { const d=new Date(t.date); return d.getFullYear()===yr&&d.getMonth()===mo&&t.type==='expense'; }).length} transactions`} trend="down" />
-        <StatCard title="Monthly Savings"  value={balance}  icon={Wallet}       color={balance >= 0 ? '#22c55e' : '#ef4444'} sub={balance >= 0 ? 'Great job!' : 'Over budget'} trend={balance >= 0 ? 'up' : 'down'} />
+        <StatCard title="Total Balance"      value={totalBalance} icon={Wallet}       color="#6366f1" sub="All time" />
+        <StatCard title={`${monthName} Income`}   value={income}   icon={TrendingUp}   color="#22c55e"
+          sub={incomeCount ? `${incomeCount} transaction${incomeCount !== 1 ? 's' : ''}` : 'No income yet'} trend={income > 0 ? 'up' : undefined} />
+        <StatCard title={`${monthName} Expenses`} value={expenses} icon={TrendingDown} color="#ef4444"
+          sub={expenseCount ? `${expenseCount} transaction${expenseCount !== 1 ? 's' : ''}` : 'No expenses yet'} trend={expenses > 0 ? 'down' : undefined} />
+        <StatCard title="Net Savings"        value={balance}  icon={Wallet}
+          color={balance >= 0 ? '#22c55e' : '#ef4444'}
+          sub={isEmpty ? 'Add transactions to start' : balance >= 0 ? 'Great job!' : 'Over budget'}
+          trend={isEmpty ? undefined : balance >= 0 ? 'up' : 'down'} />
       </div>
+
+      {/* Quickstart cards — only when no transactions */}
+      {isEmpty && (
+        <div className={`${styles.card} ${styles.quickstartCard}`}>
+          <div className={styles.cardHeader}>
+            <div>
+              <h3 className={styles.cardTitle}>Get started</h3>
+              <p className={styles.cardSub}>Add your first transaction to start tracking your budget</p>
+            </div>
+          </div>
+          <div className={styles.quickstartGrid}>
+            <button className={styles.quickBtn} onClick={onOpenAddModal}>
+              <div className={styles.quickBtnIcon} style={{ background: 'var(--green-dim)', color: 'var(--green)' }}>
+                <ArrowUpRight size={22} />
+              </div>
+              <span className={styles.quickBtnLabel}>Track Income</span>
+              <span className={styles.quickBtnSub}>Log your earnings</span>
+            </button>
+            <button className={styles.quickBtn} onClick={onOpenAddModal}>
+              <div className={styles.quickBtnIcon} style={{ background: 'var(--red-dim)', color: 'var(--red)' }}>
+                <ArrowDownRight size={22} />
+              </div>
+              <span className={styles.quickBtnLabel}>Track Expenses</span>
+              <span className={styles.quickBtnSub}>Record your spending</span>
+            </button>
+            <button className={styles.quickBtn} onClick={() => onNavigate('goals')}>
+              <div className={styles.quickBtnIcon} style={{ background: 'var(--accent-dim)', color: 'var(--accent)' }}>
+                <Target size={22} />
+              </div>
+              <span className={styles.quickBtnLabel}>Set Budget Goals</span>
+              <span className={styles.quickBtnSub}>Define spending limits</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Area chart */}
       <div className={`${styles.card} ${styles.areaCard}`}>
@@ -184,8 +224,8 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
         </div>
       </div>
 
-      {/* Pie chart */}
-      <div className={`${styles.card} ${styles.pieCard}`}>
+      {/* Spending breakdown */}
+      <div className={`${styles.card} ${goalAlerts.length > 0 ? styles.pieCard : styles.areaCard}`}>
         <div className={styles.cardHeader}>
           <div>
             <h3 className={styles.cardTitle}>Spending by Category</h3>
@@ -193,12 +233,17 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
           </div>
         </div>
         {pieData.length === 0 ? (
-          <div className={styles.emptyPie}>No expenses this month</div>
+          <div className={styles.emptyPie}>
+            <p>No expenses this month</p>
+            <button className={styles.emptyPieBtn} onClick={onOpenAddModal}>
+              <Plus size={13} /> Add expense
+            </button>
+          </div>
         ) : (
           <>
-            <ResponsiveContainer width="100%" height={180}>
+            <ResponsiveContainer width="100%" height={160}>
               <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={44} outerRadius={72}
                   dataKey="value" paddingAngle={3} stroke="none">
                   {pieData.map((entry, i) => (
                     <Cell key={i} fill={entry.fill} />
@@ -207,20 +252,29 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
                 <Tooltip content={<PieTooltip />} />
               </PieChart>
             </ResponsiveContainer>
-            <div className={styles.pieList}>
-              {pieData.map((d) => (
-                <div key={d.name} className={styles.pieRow}>
-                  <span className={styles.pieDot} style={{ background: d.fill }} />
-                  <span className={styles.pieName}>{d.name}</span>
-                  <span className={styles.pieVal}>{fmt(d.value)}</span>
-                </div>
-              ))}
+            <div className={styles.catBreakdown}>
+              {pieData.map((d) => {
+                const pct = pieTotal > 0 ? Math.round((d.value / pieTotal) * 100) : 0;
+                return (
+                  <div key={d.name} className={styles.catRow}>
+                    <div className={styles.catMeta}>
+                      <span className={styles.catDot} style={{ background: d.fill }} />
+                      <span className={styles.catName}>{d.name}</span>
+                      <span className={styles.catPct}>{pct}%</span>
+                      <span className={styles.catVal}>{fmt(d.value)}</span>
+                    </div>
+                    <div className={styles.catBar}>
+                      <div className={styles.catBarFill} style={{ width: `${pct}%`, background: d.fill }} />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </>
         )}
       </div>
 
-      {/* Budget goal alerts */}
+      {/* Budget progress */}
       {goalAlerts.length > 0 && (
         <div className={`${styles.card} ${styles.goalsCard}`}>
           <div className={styles.cardHeader}>
@@ -266,7 +320,12 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
           <button className={styles.cardLink} onClick={() => onNavigate('transactions')}>View all →</button>
         </div>
         {recent.length === 0 ? (
-          <div className={styles.emptyPie}>No transactions yet</div>
+          <div className={styles.emptyPie}>
+            <p>No transactions yet</p>
+            <button className={styles.emptyPieBtn} onClick={onOpenAddModal}>
+              <Plus size={13} /> Add your first
+            </button>
+          </div>
         ) : (
           <div className={styles.txList}>
             {recent.map((t) => (
