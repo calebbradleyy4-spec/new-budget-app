@@ -393,14 +393,14 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
                 </div>
               </div>
               <div className={styles.quickstartGrid}>
-                <button className={styles.quickBtn} onClick={onOpenAddModal}>
+                <button className={styles.quickBtn} onClick={() => onOpenAddModal('income')}>
                   <div className={styles.quickBtnIcon} style={{ background: 'var(--green-dim)', color: 'var(--green)' }}>
                     <ArrowUpRight size={22} />
                   </div>
                   <span className={styles.quickBtnLabel}>Track Income</span>
                   <span className={styles.quickBtnSub}>Log your earnings</span>
                 </button>
-                <button className={styles.quickBtn} onClick={onOpenAddModal}>
+                <button className={styles.quickBtn} onClick={() => onOpenAddModal('expense')}>
                   <div className={styles.quickBtnIcon} style={{ background: 'var(--red-dim)', color: 'var(--red)' }}>
                     <ArrowDownRight size={22} />
                   </div>

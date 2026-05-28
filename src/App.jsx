@@ -16,7 +16,7 @@ function App() {
   const [page,        setPage]        = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme,       setTheme]       = useState(getInitialTheme);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(null); // null | 'income' | 'expense'
 
   const budget = useBudget();
 
@@ -38,7 +38,7 @@ function App() {
             goals={budget.goals}
             CATEGORY_COLORS={budget.CATEGORY_COLORS}
             onNavigate={setPage}
-            onOpenAddModal={() => setShowAddModal(true)}
+            onOpenAddModal={(type) => setShowAddModal(type ?? 'expense')}
           />
         );
       case 'transactions':
@@ -78,14 +78,15 @@ function App() {
       onToggleSidebar={setSidebarOpen}
       theme={theme}
       onToggleTheme={toggleTheme}
-      onOpenAddModal={() => setShowAddModal(true)}
+      onOpenAddModal={(type) => setShowAddModal(type ?? 'expense')}
     >
       {renderPage()}
 
       {showAddModal && (
         <TransactionModal
-          onClose={() => setShowAddModal(false)}
-          onSave={(tx) => { budget.addTransaction(tx); setShowAddModal(false); }}
+          defaultType={showAddModal}
+          onClose={() => setShowAddModal(null)}
+          onSave={(tx) => { budget.addTransaction(tx); setShowAddModal(null); }}
           INCOME_CATEGORIES={budget.INCOME_CATEGORIES}
           EXPENSE_CATEGORIES={budget.EXPENSE_CATEGORIES}
         />

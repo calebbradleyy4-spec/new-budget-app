@@ -4,8 +4,8 @@ import styles from './TransactionModal.module.css';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export default function TransactionModal({ tx, onSave, onClose, INCOME_CATEGORIES, EXPENSE_CATEGORIES }) {
-  const [type,        setType]        = useState(tx?.type        ?? 'expense');
+export default function TransactionModal({ tx, onSave, onClose, INCOME_CATEGORIES, EXPENSE_CATEGORIES, defaultType = 'expense' }) {
+  const [type,        setType]        = useState(tx?.type        ?? defaultType);
   const [amount,      setAmount]      = useState(tx?.amount      ?? '');
   const [category,    setCategory]    = useState(tx?.category    ?? '');
   const [description, setDescription] = useState(tx?.description ?? '');
@@ -23,7 +23,6 @@ export default function TransactionModal({ tx, onSave, onClose, INCOME_CATEGORIE
     e.preventDefault();
     if (!amount || Number(amount) <= 0) return setError('Enter a valid amount.');
     if (!category)                       return setError('Select a category.');
-    if (!description.trim())             return setError('Add a description.');
     if (!date)                           return setError('Pick a date.');
     setError('');
     onSave({ type, amount: Number(amount), category, description: description.trim(), date });
