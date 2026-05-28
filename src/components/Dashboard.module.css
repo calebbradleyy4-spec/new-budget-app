@@ -278,6 +278,41 @@
   color: var(--text-muted);
 }
 
+/* ── Chart type toggle ── */
+.chartToggle {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 3px;
+  flex-shrink: 0;
+}
+
+.chartTypeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color var(--t), background var(--t);
+}
+
+.chartTypeBtn:hover:not(.chartTypeBtnActive) {
+  color: var(--text-primary);
+  background: var(--bg-card-hover);
+}
+
+.chartTypeBtnActive {
+  background: var(--accent);
+  color: #fff;
+}
+
 /* ── Chart legend ── */
 .chartLegend {
   display: flex;

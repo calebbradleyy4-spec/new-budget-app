@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, ResponsiveContainer,
 } from 'recharts';
 import {
   TrendingUp, TrendingDown, Wallet,
   ArrowUpRight, ArrowDownRight, Target, Plus,
   ChevronLeft, ChevronRight,
+  PieChart as PieChartIcon, LineChart as LineChartIcon, BarChart2 as BarChartIcon,
 } from 'lucide-react';
 import styles from './Dashboard.module.css';
 
@@ -105,9 +106,10 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
   const currentYear  = now.getFullYear();
   const currentMonth = now.getMonth();
 
-  const [tab,      setTab]      = useState('month');
-  const [selYear,  setSelYear]  = useState(currentYear);
-  const [selMonth, setSelMonth] = useState(currentMonth);
+  const [tab,       setTab]      = useState('month');
+  const [chartType, setChartType] = useState('pie'); // 'pie' | 'line' | 'bar'
+  const [selYear,   setSelYear]  = useState(currentYear);
+  const [selMonth,  setSelMonth] = useState(currentMonth);
 
   const isCurrentMonth = selYear === currentYear && selMonth === currentMonth;
   const isCurrentYear  = selYear === currentYear;
@@ -251,7 +253,18 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
   const isEmpty = transactions.length === 0;
 
   // ── Shared render helpers (called as functions, not components) ──────
-  function renderAreaChart(data, subLabel) {
+  function renderAreaChart(data, subLabel, incomeTotal, expenseTotal) {
+    const summaryPieData = [
+      { name: 'Income',   value: incomeTotal,  fill: '#22c55e' },
+      { name: 'Expenses', value: expenseTotal, fill: '#ef4444' },
+    ].filter((d) => d.value > 0);
+
+    const CHART_TYPES = [
+      { id: 'pie',  Icon: PieChartIcon,  title: 'Pie chart'  },
+      { id: 'line', Icon: LineChartIcon, title: 'Line chart' },
+      { id: 'bar',  Icon: BarChartIcon,  title: 'Bar chart'  },
+    ];
+
     return (
       <div className={`${styles.card} ${styles.areaCard}`}>
         <div className={styles.cardHeader}>
@@ -259,22 +272,80 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
             <h3 className={styles.cardTitle}>Income vs Expenses</h3>
             <p className={styles.cardSub}>{subLabel}</p>
           </div>
+          <div className={styles.chartToggle}>
+            {CHART_TYPES.map(({ id, Icon, title }) => (
+              <button
+                key={id}
+                className={`${styles.chartTypeBtn} ${chartType === id ? styles.chartTypeBtnActive : ''}`}
+                onClick={() => setChartType(id)}
+                title={title}
+              >
+                <Icon size={14} />
+              </button>
+            ))}
+          </div>
         </div>
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={data} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
-            {AREA_GRADIENTS}
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-            <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
-            <YAxis tickFormatter={fmtShort} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} width={50} />
-            <Tooltip content={<CustomTooltip />} />
-            <Area type="monotone" dataKey="Income"   stroke="#22c55e" strokeWidth={2} fill="url(#gIncome)"   />
-            <Area type="monotone" dataKey="Expenses" stroke="#ef4444" strokeWidth={2} fill="url(#gExpenses)" />
-          </AreaChart>
-        </ResponsiveContainer>
-        <div className={styles.chartLegend}>
-          <div className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#22c55e' }} />Income</div>
-          <div className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#ef4444' }} />Expenses</div>
-        </div>
+
+        {chartType === 'pie' && (
+          summaryPieData.length === 0 ? (
+            <div className={styles.emptyPie}><p>No data for this period</p></div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={220}>
+                <PieChart>
+                  <Pie data={summaryPieData} cx="50%" cy="50%" innerRadius={64} outerRadius={96}
+                    dataKey="value" paddingAngle={4} stroke="none">
+                    {summaryPieData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                  </Pie>
+                  <Tooltip content={<PieTooltip />} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className={styles.chartLegend}>
+                <div className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#22c55e' }} />Income · {fmt(incomeTotal)}</div>
+                <div className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#ef4444' }} />Expenses · {fmt(expenseTotal)}</div>
+              </div>
+            </>
+          )
+        )}
+
+        {chartType === 'line' && (
+          <>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={data} margin={{ top: 5, right: 10, bottom: 0, left: -10 }}>
+                {AREA_GRADIENTS}
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={fmtShort} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} width={50} />
+                <Tooltip content={<CustomTooltip />} />
+                <Area type="monotone" dataKey="Income"   stroke="#22c55e" strokeWidth={2} fill="url(#gIncome)"   />
+                <Area type="monotone" dataKey="Expenses" stroke="#ef4444" strokeWidth={2} fill="url(#gExpenses)" />
+              </AreaChart>
+            </ResponsiveContainer>
+            <div className={styles.chartLegend}>
+              <div className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#22c55e' }} />Income</div>
+              <div className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#ef4444' }} />Expenses</div>
+            </div>
+          </>
+        )}
+
+        {chartType === 'bar' && (
+          <>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={data} margin={{ top: 5, right: 10, bottom: 0, left: -10 }} barGap={3}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="month" tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} />
+                <YAxis tickFormatter={fmtShort} tick={{ fill: 'var(--text-muted)', fontSize: 12 }} axisLine={false} tickLine={false} width={50} />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="Income"   fill="#22c55e" radius={[3, 3, 0, 0]} maxBarSize={36} />
+                <Bar dataKey="Expenses" fill="#ef4444" radius={[3, 3, 0, 0]} maxBarSize={36} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className={styles.chartLegend}>
+              <div className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#22c55e' }} />Income</div>
+              <div className={styles.legendItem}><span className={styles.legendDot} style={{ background: '#ef4444' }} />Expenses</div>
+            </div>
+          </>
+        )}
       </div>
     );
   }
@@ -418,7 +489,7 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
             </div>
           )}
 
-          {renderAreaChart(areaData, `6 months ending ${monthName}`)}
+          {renderAreaChart(areaData, `6 months ending ${monthName}`, income, expenses)}
 
           {/* Spending breakdown — half-width when goals present */}
           <div className={`${styles.card} ${goalAlerts.length > 0 ? styles.pieCard : styles.areaCard}`}>
@@ -543,7 +614,7 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
               trend={yearBalance >= 0 ? 'up' : 'down'} />
           </div>
 
-          {renderAreaChart(yearAreaData, `Month-by-month · ${selYear}`)}
+          {renderAreaChart(yearAreaData, `Month-by-month · ${selYear}`, yearIncome, yearExpenses)}
           {renderPieCard(yearPieData, yearPieTotal, 'Spending by Category', `${selYear} breakdown`, `No expenses in ${selYear}`)}
         </>
       )}
@@ -573,7 +644,7 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
               </div>
             </div>
           ) : (
-            renderAreaChart(overviewData, 'Full transaction history')
+            renderAreaChart(overviewData, 'Full transaction history', allIncome, allExpenses)
           )}
 
           {renderPieCard(allPieData, allPieTotal, 'Spending by Category', 'All-time breakdown', 'No expenses yet')}
