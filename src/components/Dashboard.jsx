@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   PieChart, Pie, Cell, ResponsiveContainer,
@@ -6,6 +6,7 @@ import {
 import {
   TrendingUp, TrendingDown, Wallet,
   ArrowUpRight, ArrowDownRight, Target, Plus,
+  ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import styles from './Dashboard.module.css';
 
@@ -65,97 +66,148 @@ const PieTooltip = ({ active, payload }) => {
 
 export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavigate, onOpenAddModal }) {
   const now = new Date();
-  const yr = now.getFullYear();
-  const mo = now.getMonth();
+  const currentYear  = now.getFullYear();
+  const currentMonth = now.getMonth();
 
+  const [selYear,  setSelYear]  = useState(currentYear);
+  const [selMonth, setSelMonth] = useState(currentMonth);
+
+  const isCurrentMonth = selYear === currentYear && selMonth === currentMonth;
+
+  function goToPrev() {
+    if (selMonth === 0) { setSelMonth(11); setSelYear((y) => y - 1); }
+    else { setSelMonth((m) => m - 1); }
+  }
+
+  function goToNext() {
+    if (isCurrentMonth) return;
+    if (selMonth === 11) { setSelMonth(0); setSelYear((y) => y + 1); }
+    else { setSelMonth((m) => m + 1); }
+  }
+
+  const selDate   = new Date(selYear, selMonth, 1);
+  const monthName = selDate.toLocaleString('default', { month: 'long' });
+  const monthLabel = selDate.toLocaleString('default', { month: 'long', year: 'numeric' });
+
+  // ── Stats for selected month ──────────────────────────────────────
   const { income, expenses, balance, incomeCount, expenseCount } = useMemo(() => {
-    const thisMonth = transactions.filter((t) => {
+    const mo = transactions.filter((t) => {
       const d = new Date(t.date);
-      return d.getFullYear() === yr && d.getMonth() === mo;
+      return d.getFullYear() === selYear && d.getMonth() === selMonth;
     });
-    const inc = thisMonth.filter((t) => t.type === 'income');
-    const exp = thisMonth.filter((t) => t.type === 'expense');
-    const income = inc.reduce((s, t) => s + t.amount, 0);
+    const inc = mo.filter((t) => t.type === 'income');
+    const exp = mo.filter((t) => t.type === 'expense');
+    const income   = inc.reduce((s, t) => s + t.amount, 0);
     const expenses = exp.reduce((s, t) => s + t.amount, 0);
     return { income, expenses, balance: income - expenses, incomeCount: inc.length, expenseCount: exp.length };
-  }, [transactions, yr, mo]);
+  }, [transactions, selYear, selMonth]);
 
+  // All-time balance (unaffected by month selection)
   const totalBalance = useMemo(
     () => transactions.reduce((s, t) => s + (t.type === 'income' ? t.amount : -t.amount), 0),
     [transactions]
   );
 
+  // ── Area chart: 6 months ending at selected month ─────────────────
   const areaData = useMemo(() => {
     return Array.from({ length: 6 }, (_, i) => {
-      const d = new Date(yr, mo - 5 + i, 1);
+      const d = new Date(selYear, selMonth - 5 + i, 1);
       const m = d.getMonth();
       const y = d.getFullYear();
-      const month = d.toLocaleString('default', { month: 'short' });
       const txs = transactions.filter((t) => {
         const td = new Date(t.date);
         return td.getFullYear() === y && td.getMonth() === m;
       });
       return {
-        month,
+        month: d.toLocaleString('default', { month: 'short' }),
         Income:   txs.filter((t) => t.type === 'income').reduce((s, t)  => s + t.amount, 0),
         Expenses: txs.filter((t) => t.type === 'expense').reduce((s, t) => s + t.amount, 0),
       };
     });
-  }, [transactions, yr, mo]);
+  }, [transactions, selYear, selMonth]);
 
+  // ── Spending pie for selected month ───────────────────────────────
   const pieData = useMemo(() => {
     const map = {};
     transactions
       .filter((t) => {
         const d = new Date(t.date);
-        return t.type === 'expense' && d.getFullYear() === yr && d.getMonth() === mo;
+        return t.type === 'expense' && d.getFullYear() === selYear && d.getMonth() === selMonth;
       })
       .forEach((t) => { map[t.category] = (map[t.category] ?? 0) + t.amount; });
     return Object.entries(map)
       .map(([name, value]) => ({ name, value, fill: CATEGORY_COLORS[name] ?? '#6b7280' }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
-  }, [transactions, yr, mo, CATEGORY_COLORS]);
+  }, [transactions, selYear, selMonth, CATEGORY_COLORS]);
 
   const pieTotal = useMemo(() => pieData.reduce((s, d) => s + d.value, 0), [pieData]);
 
-  const recent = useMemo(
-    () => [...transactions].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 8),
-    [transactions]
-  );
+  // ── Recent transactions for selected month ────────────────────────
+  const recent = useMemo(() => {
+    return transactions
+      .filter((t) => {
+        const d = new Date(t.date);
+        return d.getFullYear() === selYear && d.getMonth() === selMonth;
+      })
+      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .slice(0, 8);
+  }, [transactions, selYear, selMonth]);
 
+  // ── Goal alerts for selected month ────────────────────────────────
   const goalAlerts = useMemo(() => {
     return goals.map((g) => {
       const spent = transactions
         .filter((t) => {
           const d = new Date(t.date);
           return t.type === 'expense' && t.category === g.category
-            && d.getFullYear() === yr && d.getMonth() === mo;
+            && d.getFullYear() === selYear && d.getMonth() === selMonth;
         })
         .reduce((s, t) => s + t.amount, 0);
       return { ...g, spent, pct: Math.min(spent / g.limit, 1) };
     }).sort((a, b) => b.pct - a.pct).slice(0, 3);
-  }, [goals, transactions, yr, mo]);
+  }, [goals, transactions, selYear, selMonth]);
 
-  const monthName = now.toLocaleString('default', { month: 'long' });
   const isEmpty = transactions.length === 0;
 
   return (
     <div className={styles.grid}>
-      {/* Stats row — always visible */}
+
+      {/* ── Month navigator ── */}
+      <div className={styles.monthNav}>
+        <button className={styles.monthNavBtn} onClick={goToPrev} aria-label="Previous month">
+          <ChevronLeft size={18} />
+        </button>
+        <div className={styles.monthNavCenter}>
+          <span className={styles.monthNavLabel}>{monthLabel}</span>
+          {isCurrentMonth && <span className={styles.monthNavBadge}>Current</span>}
+        </div>
+        <button
+          className={styles.monthNavBtn}
+          onClick={goToNext}
+          disabled={isCurrentMonth}
+          aria-label="Next month"
+        >
+          <ChevronRight size={18} />
+        </button>
+      </div>
+
+      {/* ── Stats row — always visible ── */}
       <div className={styles.stats}>
-        <StatCard title="Total Balance"      value={totalBalance} icon={Wallet}       color="#6366f1" sub="All time" />
-        <StatCard title={`${monthName} Income`}   value={income}   icon={TrendingUp}   color="#22c55e"
-          sub={incomeCount ? `${incomeCount} transaction${incomeCount !== 1 ? 's' : ''}` : 'No income yet'} trend={income > 0 ? 'up' : undefined} />
-        <StatCard title={`${monthName} Expenses`} value={expenses} icon={TrendingDown} color="#ef4444"
-          sub={expenseCount ? `${expenseCount} transaction${expenseCount !== 1 ? 's' : ''}` : 'No expenses yet'} trend={expenses > 0 ? 'down' : undefined} />
-        <StatCard title="Net Savings"        value={balance}  icon={Wallet}
+        <StatCard title="Total Balance"    value={totalBalance} icon={Wallet}       color="#6366f1" sub="All time" />
+        <StatCard title="Income"           value={income}   icon={TrendingUp}   color="#22c55e"
+          sub={incomeCount ? `${incomeCount} transaction${incomeCount !== 1 ? 's' : ''}` : 'No income yet'}
+          trend={income > 0 ? 'up' : undefined} />
+        <StatCard title="Expenses"         value={expenses} icon={TrendingDown} color="#ef4444"
+          sub={expenseCount ? `${expenseCount} transaction${expenseCount !== 1 ? 's' : ''}` : 'No expenses yet'}
+          trend={expenses > 0 ? 'down' : undefined} />
+        <StatCard title="Net Savings"      value={balance}  icon={Wallet}
           color={balance >= 0 ? '#22c55e' : '#ef4444'}
           sub={isEmpty ? 'Add transactions to start' : balance >= 0 ? 'Great job!' : 'Over budget'}
           trend={isEmpty ? undefined : balance >= 0 ? 'up' : 'down'} />
       </div>
 
-      {/* Quickstart cards — only when no transactions */}
+      {/* ── Quickstart — only when no transactions at all ── */}
       {isEmpty && (
         <div className={`${styles.card} ${styles.quickstartCard}`}>
           <div className={styles.cardHeader}>
@@ -190,12 +242,12 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
         </div>
       )}
 
-      {/* Area chart */}
+      {/* ── Area chart ── */}
       <div className={`${styles.card} ${styles.areaCard}`}>
         <div className={styles.cardHeader}>
           <div>
             <h3 className={styles.cardTitle}>Income vs Expenses</h3>
-            <p className={styles.cardSub}>Last 6 months</p>
+            <p className={styles.cardSub}>6 months ending {monthName}</p>
           </div>
         </div>
         <ResponsiveContainer width="100%" height={220}>
@@ -224,17 +276,17 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
         </div>
       </div>
 
-      {/* Spending breakdown */}
+      {/* ── Spending breakdown ── */}
       <div className={`${styles.card} ${goalAlerts.length > 0 ? styles.pieCard : styles.areaCard}`}>
         <div className={styles.cardHeader}>
           <div>
             <h3 className={styles.cardTitle}>Spending by Category</h3>
-            <p className={styles.cardSub}>{monthName} breakdown</p>
+            <p className={styles.cardSub}>{monthLabel} breakdown</p>
           </div>
         </div>
         {pieData.length === 0 ? (
           <div className={styles.emptyPie}>
-            <p>No expenses this month</p>
+            <p>No expenses in {monthName}</p>
             <button className={styles.emptyPieBtn} onClick={onOpenAddModal}>
               <Plus size={13} /> Add expense
             </button>
@@ -274,13 +326,13 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
         )}
       </div>
 
-      {/* Budget progress */}
+      {/* ── Budget progress ── */}
       {goalAlerts.length > 0 && (
         <div className={`${styles.card} ${styles.goalsCard}`}>
           <div className={styles.cardHeader}>
             <div>
               <h3 className={styles.cardTitle}>Budget Progress</h3>
-              <p className={styles.cardSub}>Top categories this month</p>
+              <p className={styles.cardSub}>Top categories · {monthName}</p>
             </div>
             <button className={styles.cardLink} onClick={() => onNavigate('goals')}>View all →</button>
           </div>
@@ -310,20 +362,20 @@ export default function Dashboard({ transactions, goals, CATEGORY_COLORS, onNavi
         </div>
       )}
 
-      {/* Recent transactions */}
+      {/* ── Transactions for selected month ── */}
       <div className={`${styles.card} ${styles.recentCard}`}>
         <div className={styles.cardHeader}>
           <div>
-            <h3 className={styles.cardTitle}>Recent Transactions</h3>
-            <p className={styles.cardSub}>Latest activity</p>
+            <h3 className={styles.cardTitle}>Transactions</h3>
+            <p className={styles.cardSub}>{monthLabel}</p>
           </div>
           <button className={styles.cardLink} onClick={() => onNavigate('transactions')}>View all →</button>
         </div>
         {recent.length === 0 ? (
           <div className={styles.emptyPie}>
-            <p>No transactions yet</p>
+            <p>No transactions in {monthName}</p>
             <button className={styles.emptyPieBtn} onClick={onOpenAddModal}>
-              <Plus size={13} /> Add your first
+              <Plus size={13} /> Add transaction
             </button>
           </div>
         ) : (
